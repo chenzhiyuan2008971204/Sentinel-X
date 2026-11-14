@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
@@ -69,7 +70,9 @@ def test_vault_reharden_after_tampering(c: AppContainer) -> None:
     v = QuarantineVault(c.paths.vault_dir, c.db, c.audit)  # next start
     assert v.ready and win32fs.dacl_is_private(win32fs.read_dacl_sddl(c.paths.vault_dir), sid)
     child = win32fs.read_dacl_sddl(obj)
-    assert "S-1-1-0" not in child and "WD" not in child and sid in child
+    assert "S-1-1-0" not in child and "WD" not in child
+    trustees = [ace.split(";")[-1] for ace in re.findall(r"\(([^)]*)\)", child)]
+    assert trustees and all(win32fs.full_sid(t) == sid for t in trustees)  # e.g. "LA" for RID 500
 
 
 def test_dacl_parser() -> None:
