@@ -49,6 +49,10 @@ Requested by the user: protection not limited to a few folders, public YARA rule
 - Copying into the VM failed when the target folder already existed (VirtualBox 7 needs a trailing backslash for a folder).
 - During first setup the VM can power itself off before the Guest Additions report a signed-in user; the build now starts it again (at most 5 times) instead of waiting for the 5-hour timeout.
 
+### Fixed: quarantine did not start for the built-in Administrator account (2026-11-14)
+- Found by the first GitHub build: those machines run as Windows' built-in Administrator (RID 500), whose access entry Windows writes as the SDDL alias `LA`. The vault's "only this user" check compared the text with the full SID, never matched, and the quarantine refused to start (41 tests failed there). Aliases are now resolved with Windows' own conversion (`win32fs.full_sid`); other accounts (Everyone, Administrators, Users, SYSTEM) are still rejected. Tests: `tests/integration/test_vault_acl_aliases.py`.
+- Open-source release preparation: GPL-3.0, GitHub Actions build, code signing and privacy policy in README.
+
 ### Fixed: a restored false positive kept being blocked (asked by the user, 2026-11-09)
 - Marking a copy of a file as a false positive only re-assessed that copy. An older copy of the same content (the quarantined original, an earlier download) kept its "confirmed threat" verdict, and the quarantine entry kept the hash on the process guard's list, so the program was closed every time it started. Now a false positive re-assesses every copy with the same SHA-256 (`ReviewService.review`), and quarantined or deleted files the user has marked as false positives are no longer on the process guard's list (`ProtectionService.threat_hashes`); a copy still judged a confirmed threat by other evidence stays on it.
 - Restoring from the quarantine now asks whether to also mark the file as a false positive (whole file, `ReviewService.dismiss_whole_file`). Restoring alone still does not trust the file: the same download is blocked again, as before.

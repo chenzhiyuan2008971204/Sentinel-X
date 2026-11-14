@@ -175,12 +175,54 @@ def read_dacl_sddl(path: Path) -> str:
     return line.strip()
 
 
+def full_sid(trustee: str) -> str:
+    """The full SID of an SDDL trustee. SDDL writes some accounts as two-letter aliases, for
+    example "LA" for this computer's built-in Administrator (RID 500): a user signed in with that
+    account (GitHub's Windows build machines are) got a vault ACE that never matched their SID,
+    so the quarantine refused to start. Windows' own conversion resolves the alias."""
+    if trustee.startswith("S-"):
+        return trustee
+    adv, k32 = _sid_api()
+    psid = ctypes.c_void_p()
+    if not adv.ConvertStringSidToSidW(trustee, ctypes.byref(psid)):
+        return trustee
+    try:
+        text = ctypes.c_wchar_p()
+        if not adv.ConvertSidToStringSidW(psid, ctypes.byref(text)):
+            return trustee
+        try:
+            return text.value or trustee
+        finally:
+            k32.LocalFree(ctypes.cast(text, ctypes.c_void_p))
+    finally:
+        k32.LocalFree(psid)
+
+
+_sid_funcs = None
+
+
+def _sid_api():  # type: ignore[no-untyped-def]
+    """Signatures made once (see engineering audit 8, M4: no per-call ctypes types)."""
+    global _sid_funcs
+    if _sid_funcs is None:
+        adv = ctypes.WinDLL("advapi32", use_last_error=True)
+        adv.ConvertStringSidToSidW.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(ctypes.c_void_p)]
+        adv.ConvertStringSidToSidW.restype = wintypes.BOOL
+        adv.ConvertSidToStringSidW.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_wchar_p)]
+        adv.ConvertSidToStringSidW.restype = wintypes.BOOL
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.LocalFree.argtypes = [ctypes.c_void_p]
+        k32.LocalFree.restype = ctypes.c_void_p
+        _sid_funcs = (adv, k32)
+    return _sid_funcs
+
+
 def dacl_is_private(sddl: str, sid: str) -> bool:
     """Protected DACL (no inheritance) whose every ACE belongs to `sid`."""
     if not sddl.startswith("D:P"):
         return False
     aces = _ACE_RE.findall(sddl)
-    return bool(aces) and all(a.split(";")[-1] == sid and a.split(";")[0] == "A" for a in aces)
+    return bool(aces) and all(full_sid(a.split(";")[-1]) == sid and a.split(";")[0] == "A" for a in aces)
 
 
 def harden_directory(path: Path, sid: str) -> None:
