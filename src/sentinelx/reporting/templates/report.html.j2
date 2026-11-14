@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'none'; form-action 'none'; base-uri 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="Sentinel X {{ doc.tool_versions.sentinelx }}">
+<title>{{ doc.title }}</title>
+<style>
+  :root { color-scheme: light dark; --bg:#ffffff; --fg:#0f172a; --muted:#475569; --line:#cbd5e1; --head:#e2e8f0; --code:#f1f5f9; --accent:#0e7490; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0b1220; --fg:#e2e8f0; --muted:#94a3b8; --line:#334155; --head:#1e293b; --code:#111a2e; --accent:#22d3ee; } }
+  body { background:var(--bg); color:var(--fg); font-family:"Microsoft JhengHei UI","Microsoft JhengHei","Segoe UI",sans-serif; margin:0 auto; max-width:1100px; padding:24px 16px 48px; line-height:1.5; overflow-wrap:anywhere; }
+  h1 { font-size:1.6rem; margin:0 0 4px; color:var(--accent); }
+  h2 { font-size:1.15rem; margin:28px 0 8px; border-bottom:1px solid var(--line); padding-bottom:4px; }
+  .meta, .note { color:var(--muted); font-size:.9rem; }
+  .disclaimer { border-left:3px solid var(--accent); padding:8px 12px; background:var(--code); margin:16px 0; }
+  table { border-collapse:collapse; width:100%; font-size:.9rem; }
+  th, td { border:1px solid var(--line); padding:4px 8px; text-align:left; vertical-align:top; overflow-wrap:anywhere; }
+  th { background:var(--head); }
+  table.fields td:first-child { width:28%; color:var(--muted); }
+  pre { background:var(--code); padding:10px; overflow-x:auto; font-size:.8rem; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .scroll { overflow-x:auto; }
+</style>
+</head>
+<body>
+<h1>{{ doc.title }}</h1>
+<div class="meta">報告類型：{{ doc.report_type }} ・ 主題：{{ doc.subject.type }} {{ doc.subject.ref }} ・ 產生時間（UTC）：{{ doc.generated_at }} ・ 格式 {{ doc.schema }}</div>
+<div class="disclaimer">{{ doc.disclaimer }}</div>
+{% for s in sections %}
+<h2>{{ s.title }}</h2>
+{% if s.type == "fields" %}
+<table class="fields">{% for row in s.rows %}<tr><td>{{ row[0] }}</td><td>{{ fmt(row[1]) }}</td></tr>{% endfor %}</table>
+{% elif s.type == "table" %}
+{% if s.rows %}
+<div class="scroll"><table><tr>{% for c in s.columns %}<th>{{ c }}</th>{% endfor %}</tr>
+{% for row in s.rows %}<tr>{% for v in row %}<td>{{ fmt(v) }}</td>{% endfor %}</tr>{% endfor %}</table></div>
+{% else %}<p class="note">（無資料）</p>{% endif %}
+{% if s.note %}<p class="note">{{ s.note }}</p>{% endif %}
+{% elif s.type == "text" %}
+{% for p in s.paragraphs %}<p>{{ p }}</p>{% endfor %}
+{% elif s.type == "code" %}
+<pre>{{ s.text }}</pre>
+{% endif %}
+{% endfor %}
+<h2>原始證據（JSON）</h2>
+<p class="note">以下為引擎與資料庫記錄的原始資料，與上方各節的內容一致，可用來核對。</p>
+<pre>{{ evidence_json }}</pre>
+</body>
+</html>

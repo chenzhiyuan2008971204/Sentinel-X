@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentinelx"
+version = "0.16.0"
+description = "Sentinel X Research Edition - Windows security research platform"
+requires-python = ">=3.12"
+readme = "README.md"
+license = {text = "GPL-3.0-only"}
+dependencies = [
+    "PySide6==6.8.1",
+    "SQLAlchemy==2.0.36",
+    "pydantic==2.10.3",
+    "yara-python==4.5.1",
+    "pefile==2024.8.26",
+    "psutil==6.1.0",
+    "watchdog==6.0.0",
+    "Jinja2==3.1.4",
+    "MarkupSafe==3.0.4",
+    "reportlab==4.2.5",
+    "pillow==13.0.0",
+    "chardet==7.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+    "pytest-qt==4.4.0",
+    "pytest-cov==6.0.0",
+    "ruff==0.8.4",
+    "pypdf==5.1.0",
+    "pyinstaller==6.22.3",
+]
+
+[project.scripts]
+sentinelx = "sentinelx.app.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sentinelx = ["resources/*.xml", "reporting/templates/*.j2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]
+markers = [
+    "needs_clamav: requires a real ClamAV install with signatures (skipped otherwise)",
+    "slow: takes tens of seconds (e.g. starts a real clamd)",
+    "unit: pure logic tests",
+    "integration: tests touching real files or SQLite",
+    "security: hostile-input and misuse tests",
+    "gui: PySide6 tests (offscreen)",
+    "windows: requires Windows APIs",
+]

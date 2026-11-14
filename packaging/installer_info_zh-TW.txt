@@ -1,0 +1,15 @@
+﻿Sentinel X 研究版 — 安裝說明
+
+‧ 只安裝給目前的使用者，不需要系統管理員權限，也不會變更系統設定或 Windows Defender。
+  預設位置：%LOCALAPPDATA%\Programs\SentinelX
+
+‧ 內含 ClamAV（GNU GPL v2，未修改）。第一次啟動時，Sentinel X 會先詢問是否允許從 ClamAV 官方
+  伺服器（database.clamav.net）下載病毒碼；不同意就不會連網，之後可在「設定」中下載。
+
+‧ 資料（設定、資料庫、稽核紀錄、報告、隔離區）存放在 %LOCALAPPDATA%\SentinelX。
+  解除安裝時「不會」刪除這些資料，包括隔離區中的檔案；要移除請自行刪除該資料夾。
+
+‧ Sentinel X 只讀取與分析檔案，不會執行被分析的檔案，也不會自動永久刪除任何檔案。
+  沒有任何防毒工具能偵測所有威脅；「未發現」不代表檔案一定安全。
+
+‧ 第三方元件與授權：安裝資料夾中的 THIRD_PARTY_NOTICES.txt 與 clamav\SOURCE.txt。

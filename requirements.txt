@@ -1,0 +1,13 @@
+# Runtime dependencies. See docs/DEPENDENCIES.md for what each is used for and since when.
+PySide6==6.8.1
+SQLAlchemy==2.0.36
+pydantic==2.10.3
+yara-python==4.5.1
+pefile==2024.8.26
+psutil==6.1.0
+watchdog==6.0.0
+Jinja2==3.1.4
+MarkupSafe==3.0.4
+reportlab==4.2.5
+pillow==13.0.0
+chardet==7.7.0

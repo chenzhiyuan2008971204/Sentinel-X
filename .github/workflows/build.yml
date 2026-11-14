@@ -1,0 +1,91 @@
+# Builds Sentinel X from this repository's source on a clean GitHub Windows machine:
+# lint, full test suite, the PyInstaller package with the official ClamAV release, the installer.
+# A tag "v*" also publishes the installer as a GitHub release.
+# (Code signing through SignPath Foundation is added here once the project is accepted.)
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLAMAV_VERSION: "1.5.4"
+  # SHA-256 of clamav-1.5.4.win.x64.zip from https://github.com/Cisco-Talos/clamav/releases
+  # (checked 2026-11-14: its programs are byte-identical to the official ClamAV installer's).
+  CLAMAV_SHA256: "0d9e0228b2674137ea1a2853566c98a0278ad52ab2582c3d6dbd75373848c395"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Lint
+        run: python -m ruff check src tests
+
+      - name: Tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m pytest -q
+
+      - name: Download ClamAV (official release, fingerprint checked)
+        shell: pwsh
+        run: |
+          $url = "https://github.com/Cisco-Talos/clamav/releases/download/clamav-$env:CLAMAV_VERSION/clamav-$env:CLAMAV_VERSION.win.x64.zip"
+          $zip = Join-Path $env:RUNNER_TEMP "clamav.zip"
+          Invoke-WebRequest $url -OutFile $zip
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne $env:CLAMAV_SHA256) { throw "ClamAV download does not match the expected SHA-256: $hash" }
+          Expand-Archive $zip -DestinationPath (Join-Path $env:RUNNER_TEMP "clamav")
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build package and installer
+        shell: pwsh
+        run: |
+          $clam = Join-Path $env:RUNNER_TEMP "clamav\clamav-$env:CLAMAV_VERSION.win.x64"
+          python packaging/build.py --clamav-dir $clam --dist out
+          $setup = Get-ChildItem out -Filter "SentinelX-*-setup.exe"
+          if (-not $setup) { throw "installer was not built" }
+          Get-FileHash $setup.FullName -Algorithm SHA256 | Format-List
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SentinelX-installer
+          path: out/SentinelX-*-setup.exe
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SentinelX-installer
+          path: release
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME (Get-ChildItem release\*.exe).FullName `
+            --repo $env:GITHUB_REPOSITORY --title "Sentinel X $env:GITHUB_REF_NAME" `
+            --notes "Built automatically from tag $env:GITHUB_REF_NAME. See CHANGELOG.md."
